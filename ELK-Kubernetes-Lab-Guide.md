@@ -85,6 +85,24 @@ Use a tested CSI block-storage class with filesystem support and predictable lat
 
 Each Elasticsearch pod gets a separate ReadWriteOnce PVC. Local PVs can strand data when a node fails. Network-attached block volumes can usually reattach, subject to zone and CSI constraints. Logstash persistent queues do not support NFS.
 
+#### Lab and playground clusters without a StorageClass
+
+List the classes first. If one is available, set its name as STORAGE_CLASS in lab.env and skip the rest of this section.
+
+~~~bash
+kubectl get storageclass
+~~~
+
+If the cluster has none (common on KodeKloud and other kubeadm playgrounds), the Elasticsearch and Logstash PVCs stay Pending. Install Rancher's local-path provisioner, then use local-path as STORAGE_CLASS:
+
+~~~bash
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
+kubectl -n local-path-storage get pods
+kubectl get storageclass local-path
+~~~
+
+> ATTENTION - local-path stores data on the node's local disk. It is acceptable for a disposable lab only. Data is lost or stranded if the node fails, and it does not meet the production storage guidance above. Its WaitForFirstConsumer binding mode keeps PVCs Pending until a pod is scheduled, which is expected.
+
 > ATTENTION - PVC retention, PV reclaim policy and Elastic snapshots are separate controls. Retaining a PVC does not protect against namespace deletion, storage failure or unwanted data changes.
 
 Confirm cluster DNS, synchronized node clocks, image pulls from docker.elastic.co and the demo registry, CNI NetworkPolicy enforcement and service-mesh restrictions. Review admission rules: Filebeat uses root and hostPath access and may require a narrowly scoped collector exception. Do not weaken admission policy for the whole cluster.
