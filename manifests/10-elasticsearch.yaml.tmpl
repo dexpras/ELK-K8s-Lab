@@ -1,0 +1,44 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elk
+  namespace: logging
+spec:
+  version: ${STACK_VERSION}
+  volumeClaimDeletePolicy: DeleteOnScaledownOnly
+  nodeSets:
+    - name: main
+      count: 3
+      config:
+        node.roles: [master, data, ingest]
+      podTemplate:
+        spec:
+          automountServiceAccountToken: false
+          nodeSelector:
+            elk-data: "true"
+            kubernetes.io/os: linux
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      elasticsearch.k8s.elastic.co/cluster-name: elk
+                  topologyKey: kubernetes.io/hostname
+          containers:
+            - name: elasticsearch
+              resources:
+                requests:
+                  cpu: "1"
+                  memory: 4Gi
+                limits:
+                  cpu: "2"
+                  memory: 4Gi
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+          spec:
+            accessModes: [ReadWriteOnce]
+            storageClassName: ${STORAGE_CLASS}
+            resources:
+              requests:
+                storage: 30Gi

@@ -1,0 +1,8 @@
+Validation performed 15 October 2026
+- Parsed 16 Kubernetes resources with duplicate-key detection.
+- Checked Elasticsearch, Kibana and Logstash against official ECK 3.5.0 CRD schemas.
+- Parsed embedded Filebeat configuration and JSON request bodies.
+- Checked Bash syntax with bash -n.
+- Checked key TLS, runtime-variable and queue settings.
+- No live deployment, admission test, image pull or end-to-end runtime test was performed.
+- Run the guide's server-side dry runs and checkpoints on the target cluster.

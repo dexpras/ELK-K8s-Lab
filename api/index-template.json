@@ -1,0 +1,42 @@
+{
+  "index_patterns": ["logs-kubernetes-lab"],
+  "priority": 501,
+  "data_stream": {},
+  "template": {
+    "settings": {
+      "index.lifecycle.name": "elk-lab-7d",
+      "index.number_of_shards": 1,
+      "index.number_of_replicas": 1,
+      "index.refresh_interval": "5s"
+    },
+    "mappings": {
+      "dynamic": false,
+      "properties": {
+        "@timestamp": {"type": "date"},
+        "message": {"type": "match_only_text"},
+        "data_stream": {
+          "properties": {
+            "type": {"type": "constant_keyword"},
+            "dataset": {"type": "constant_keyword"},
+            "namespace": {"type": "constant_keyword"}
+          }
+        },
+        "kubernetes": {
+          "properties": {
+            "namespace": {"type": "keyword"},
+            "pod": {"properties": {"name": {"type": "keyword"}, "uid": {"type": "keyword"}}},
+            "node": {"properties": {"name": {"type": "keyword"}}},
+            "container": {"properties": {"name": {"type": "keyword"}}}
+          }
+        },
+        "app": {
+          "properties": {
+            "message": {"type": "keyword"},
+            "sequence": {"type": "long"},
+            "level": {"type": "keyword"}
+          }
+        }
+      }
+    }
+  }
+}

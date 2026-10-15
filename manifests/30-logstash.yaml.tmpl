@@ -1,0 +1,115 @@
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: ingest
+  namespace: logging
+spec:
+  version: ${STACK_VERSION}
+  count: 1
+  elasticsearchRefs:
+    - name: elk
+      clusterName: elk
+  config:
+    pipeline.ecs_compatibility: v8
+    pipeline.workers: 2
+    queue.type: persisted
+    queue.max_bytes: 4gb
+    queue.checkpoint.writes: 1
+    dead_letter_queue.enable: true
+    dead_letter_queue.max_bytes: 1gb
+    api.http.host: 0.0.0.0
+  pipelines:
+    - pipeline.id: main
+      config.string: |
+        input {
+          beats {
+            port => 5044
+            ssl_enabled => true
+            ssl_certificate => "/usr/share/logstash/config/ingest-tls/tls.crt"
+            ssl_key => "/usr/share/logstash/config/ingest-tls/tls.key"
+            ssl_certificate_authorities => ["/usr/share/logstash/config/ingest-tls/ca.crt"]
+            ssl_client_authentication => "required"
+          }
+        }
+        filter {
+          if [kubernetes][namespace] == "elk-demo" {
+            json {
+              source => "message"
+              target => "app"
+              skip_on_invalid_json => true
+            }
+          }
+        }
+        output {
+          elasticsearch {
+            hosts => ["${ELK_ES_HOSTS}"]
+            user => "${ELK_ES_USER}"
+            password => "${ELK_ES_PASSWORD}"
+            ssl_certificate_authorities => "${ELK_ES_SSL_CERTIFICATE_AUTHORITY}"
+            ssl_verification_mode => "full"
+            data_stream => "true"
+            data_stream_auto_routing => false
+            data_stream_type => "logs"
+            data_stream_dataset => "kubernetes"
+            data_stream_namespace => "lab"
+            manage_template => false
+            ilm_enabled => false
+          }
+        }
+  podTemplate:
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/os: linux
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: logstash
+          env:
+            - name: LS_JAVA_OPTS
+              value: "-Xms768m -Xmx768m -XX:MaxDirectMemorySize=384m"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - name: ingest-tls
+              mountPath: /usr/share/logstash/config/ingest-tls
+              readOnly: true
+      volumes:
+        - name: ingest-tls
+          secret:
+            secretName: logstash-ingest-tls
+  volumeClaimTemplates:
+    - metadata:
+        name: logstash-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: ${STORAGE_CLASS}
+        resources:
+          requests:
+            storage: 10Gi
+  services:
+    - name: api
+      tls:
+        certificate:
+          secretName: logstash-ingest-tls
+      service:
+        spec:
+          type: ClusterIP
+          ports:
+            - name: https
+              port: 9600
+              targetPort: 9600
+              protocol: TCP
+    - name: beats
+      service:
+        spec:
+          type: ClusterIP
+          ports:
+            - name: beats
+              port: 5044
+              targetPort: 5044
+              protocol: TCP

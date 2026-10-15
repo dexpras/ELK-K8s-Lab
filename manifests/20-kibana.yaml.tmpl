@@ -1,0 +1,30 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: elk
+  namespace: logging
+spec:
+  version: ${STACK_VERSION}
+  count: 1
+  elasticsearchRef:
+    name: elk
+  http:
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+          - dns: localhost
+          - ip: 127.0.0.1
+  podTemplate:
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+        - name: kibana
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi

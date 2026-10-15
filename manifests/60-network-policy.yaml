@@ -1,0 +1,78 @@
+# Ingress-only baseline. Egress remains unrestricted; see guide for the flow matrix.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: logging
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: elasticsearch-access
+  namespace: logging
+spec:
+  podSelector:
+    matchLabels:
+      elasticsearch.k8s.elastic.co/cluster-name: elk
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              elasticsearch.k8s.elastic.co/cluster-name: elk
+      ports:
+        - {protocol: TCP, port: 9300}
+    - from:
+        - podSelector:
+            matchLabels:
+              kibana.k8s.elastic.co/name: elk
+        - podSelector:
+            matchLabels:
+              logstash.k8s.elastic.co/name: ingest
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: elastic-system
+      ports:
+        - {protocol: TCP, port: 9200}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: beats-to-logstash
+  namespace: logging
+spec:
+  podSelector:
+    matchLabels:
+      logstash.k8s.elastic.co/name: ingest
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: logging-agents
+          podSelector:
+            matchLabels:
+              app: filebeat
+      ports:
+        - {protocol: TCP, port: 5044}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: operator-to-kibana
+  namespace: logging
+spec:
+  podSelector:
+    matchLabels:
+      kibana.k8s.elastic.co/name: elk
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: elastic-system
+      ports:
+        - {protocol: TCP, port: 5601}

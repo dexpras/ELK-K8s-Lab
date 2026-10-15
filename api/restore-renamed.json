@@ -1,0 +1,9 @@
+{
+  "indices": "elk-backup-probe",
+  "include_global_state": false,
+  "feature_states": [
+    "none"
+  ],
+  "rename_pattern": "elk-backup-probe",
+  "rename_replacement": "elk-backup-probe-restored"
+}
